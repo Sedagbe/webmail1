@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexis Mail — Boîte de réception</title>
+  <style>
+    /* Réinitialisation et variables système */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    :root {
+      --primary: #0078d4;
+      --primary-hover: #106ebe;
+      --primary-light: #eff6fc;
+      --text-main: #201f1e;
+      --text-secondary: #605e5c;
+      --text-muted: #a19f9d;
+      --bg-page: #ffffff;
+      --bg-sidebar: #f3f2f1;
+      --bg-hover: #f3f2f1;
+      --border-color: #edebe9;
+      --border-subtle: #f3f2f1;
+      --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body {
+      font-family: var(--font-stack);
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* En-tête supérieur Outlook / Exchange */
+    .header {
+      height: 48px;
+      background-color: var(--primary);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .header-left, .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .header-subtitle {
+      font-size: 12px;
+      opacity: 0.8;
+      font-weight: 400;
+    }
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-info {
+      text-align: right;
+      line-height: 1.2;
+    }
+    .user-name {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .user-mail {
+      font-size: 10px;
+      opacity: 0.85;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    /* Barre d'actions */
+    .toolbar {
+      height: 42px;
+      background-color: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-main);
+      transition: background 0.15s ease;
+    }
+    .btn:hover {
+      background-color: var(--bg-hover);
+    }
+    .btn-primary {
+      background-color: var(--primary);
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+    .divider {
+      width: 1px;
+      height: 18px;
+      background-color: var(--border-color);
+      margin: 0 4px;
+    }
+
+    /* Conteneur principal (3 volets) */
+    .main-layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Volet 1 : Dossiers */
+    .sidebar {
+      width: 220px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px 8px;
+      flex-shrink: 0;
+    }
+    .folder-group-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 10px;
+    }
+    .folder-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--text-main);
+      text-decoration: none;
+      cursor: pointer;
+      margin-bottom: 2px;
+    }
+    .folder-item:hover {
+      background-color: #e5e5e5;
+    }
+    .folder-item.active {
+      background-color: #ffffff;
+      color: var(--primary);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .folder-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+    .sidebar-footer {
+      padding: 10px;
+      border-top: 1px solid #e1dfdd;
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Volet 2 : Liste des e-mails */
+    .mail-list {
+      width: 320px;
+      border-right: 1px solid var(--border-color);
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .list-header {
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      background-color: #faf9f8;
+      display: flex;
+      justify-content: space-between;
+    }
+    .mail-item {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background 0.1s ease;
+      border-left: 3px solid transparent;
+    }
+    .mail-item:hover {
+      background-color: #faf9f8;
+    }
+    .mail-item.selected {
+      background-color: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+    .mail-item-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .sender-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .mail-date {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .mail-subject {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mail-snippet {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Volet 3 : Panneau de lecture du courriel */
+    .reading-pane {
+      flex: 1;
+      background-color: #ffffff;
+      overflow-y: auto;
+      padding: 32px 48px;
+    }
+    .message-container {
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .message-header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    .message-subject {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+    .sender-meta {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .sender-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background-color: #0a66c2;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+    .sender-details {
+      flex: 1;
+      font-size: 12px;
+    }
+    .sender-row-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 2px;
+    }
+    .sender-display {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .sender-address {
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-left: 6px;
+    }
+    .recipient-display {
+      color: var(--text-secondary);
+    }
+
+    /* Corps du message */
+    .message-body {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: #2b2b2b;
+    }
+    .message-body p {
+      margin-bottom: 16px;
+    }
+    .highlight-card {
+      background-color: #faf9f8;
+      border: 1px solid #edebe9;
+      border-left: 3px solid #0a66c2;
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 18px 0;
+      font-size: 13px;
+    }
+    .highlight-row {
+      display: flex;
+      margin-bottom: 6px;
+    }
+    .highlight-row:last-child {
+      margin-bottom: 0;
+    }
+    .highlight-label {
+      width: 170px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .highlight-value {
+      font-weight: 500;
+      color: var(--text-main);
+    }
+    .notice-text {
+      font-size: 12px;
+      color: #605e5c;
+      font-style: italic;
+      margin-bottom: 18px;
+    }
+    .action-link {
+      color: var(--primary);
+      text-decoration: underline;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .action-link:hover {
+      color: var(--primary-hover);
+    }
+    .message-footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .message-disclaimer {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* Icônes SVG intégrées */
+    .icon {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barre supérieure Outlook -->
+  <header class="header">
+    <div class="header-left">
+      <!-- Icône Grille d'applications -->
+      <svg class="icon" viewBox="0 0 16 16">
+        <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/><circle cx="14" cy="2" r="1.5"/>
+        <circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="14" cy="8" r="1.5"/>
+        <circle cx="2" cy="14" r="1.5"/><circle cx="8" cy="14" r="1.5"/><circle cx="14" cy="14" r="1.5"/>
+      </svg>
+      <div>
+        <span class="header-title">Nexis Mail</span>
+        <span class="header-subtitle">| Outlook Web</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-pill">
+        <div class="user-info">
+          <div class="user-name">Julien Da Silva</div>
+          <div class="user-mail">julien.dasilva@nexis-cloud.fr</div>
+        </div>
+        <div class="user-avatar">JD</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Barre d'outils -->
+  <div class="toolbar">
+    <button class="btn btn-primary">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 4v16m8-8H4"/>
+      </svg>
+      <span>Nouveau message</span>
+    </button>
+    <div class="divider"></div>
+    <button class="btn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+      </svg>
+      <span>Supprimer</span>
+    </button>
+    <button class="btn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+      </svg>
+      <span>Archiver</span>
+    </button>
+    <button class="btn">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+      </svg>
+      <span>Courrier indésirable</span>
+    </button>
+  </div>
+
+  <!-- Agencement principal -->
+  <div class="main-layout">
+    
+    <!-- Volet latéral : Dossiers -->
+    <aside class="sidebar">
+      <div>
+        <div class="folder-group-title">Favoris</div>
+        <div class="folder-item active">
+          <div class="folder-label">
+            <svg class="icon" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+            </svg>
+            <span>Boîte de réception</span>
+          </div>
+          <span class="badge">1</span>
+        </div>
+        <div class="folder-item">
+          <div class="folder-label">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+            <span>Éléments envoyés</span>
+          </div>
+        </div>
+        <div class="folder-item">
+          <div class="folder-label">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            <span>Brouillons</span>
+          </div>
+        </div>
+        <div class="folder-item">
+          <div class="folder-label">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+            <span>Courrier indésirable</span>
+          </div>
+        </div>
+        <div class="folder-item">
+          <div class="folder-label">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            <span>Corbeille</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <strong>Nexis Cloud Solutions SAS</strong><br>
+        Microsoft Exchange Online<br>
+        Datacenter France-West
+      </div>
+    </aside>
+
+    <!-- Volet intermédiaire : Liste des messages -->
+    <section class="mail-list">
+      <div class="list-header">
+        <span>Prioritaire</span>
+        <span style="color: var(--text-muted);">Filtrer ▾</span>
+      </div>
+
+      <!-- Message sélectionné : LinkedIn Talent -->
+      <article class="mail-item selected">
+        <div class="mail-item-header">
+          <span class="sender-name">LinkedIn Talent Notification</span>
+          <span class="mail-date">14:12</span>
+        </div>
+        <div class="mail-subject">[Confidentiel] Proposition reçue : Lead Platform Engineer</div>
+        <div class="mail-snippet">
+          Un recruteur senior du cabinet Horizon Search a consulté votre profil technique et souhaite échanger au sujet d'une opportunité confidentielle...
+        </div>
+      </article>
+
+      <!-- Message AWS CloudWatch -->
+      <article class="mail-item">
+        <div class="mail-item-header">
+          <span class="sender-name">Amazon Web Services</span>
+          <span class="mail-date">11:05</span>
+        </div>
+        <div class="mail-subject">[ALERTE RÉSOLUE] AutoScaling: eu-west-3-prod-k8s</div>
+        <div class="mail-snippet">
+          Cluster scaling activity completed successfully. 2 worker nodes provisioned to handle ingress load.
+        </div>
+      </article>
+
+      <!-- Message Thomas Renard (RSSI) -->
+      <article class="mail-item">
+        <div class="mail-item-header">
+          <span class="sender-name">Thomas Renard</span>
+          <span class="mail-date">Hier</span>
+        </div>
+        <div class="mail-subject">Audit ISO 27001 : Revue trimestrielle des accès R&D</div>
+        <div class="mail-snippet">
+          Bonjour Julien, peux-tu t'assurer que les clés d'API obsolètes des déploiements staging sont bien révoquées avant vendredi ?
+        </div>
+      </article>
+
+      <!-- Message Marc Lambert (RH) -->
+      <article class="mail-item">
+        <div class="mail-item-header">
+          <span class="sender-name">Marc Lambert</span>
+          <span class="mail-date">02 Nov</span>
+        </div>
+        <div class="mail-subject">Note de service : Validation des congés de fin d'année</div>
+        <div class="mail-snippet">
+          Merci de renseigner vos souhaits de congés pour les semaines 51 et 52 dans l'outil interne de gestion des temps.
+        </div>
+      </article>
+    </section>
+
+    <!-- Volet de lecture : Courriel affiché -->
+    <main class="reading-pane">
+      <div class="message-container">
+        
+        <!-- En-tête du message -->
+        <header class="message-header">
+          <h1 class="message-subject">
+            [Confidentiel] Proposition reçue : Lead Platform Engineer (Contrat cadre / Remote)
+          </h1>
+          <div class="sender-meta">
+            <div class="sender-badge">in</div>
+            <div class="sender-details">
+              <div class="sender-row-main">
+                <div>
+                  <span class="sender-display">LinkedIn Talent Notification</span>
+                  <span class="sender-address">&lt;notifications@update-linkedln.com&gt;</span>
+                </div>
+                <div class="mail-date">4 novembre 2026, 14:12</div>
+              </div>
+              <div class="recipient-display">
+                À : <strong>Julien Da Silva</strong> &lt;julien.dasilva@nexis-cloud.fr&gt;
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Contenu du message -->
+        <div class="message-body">
+          <p>Bonjour Julien,</p>
+
+          <p>
+            Un recruteur senior du cabinet <strong>Horizon Search</strong> a consulté votre profil technique et souhaite échanger au sujet d'une opportunité confidentielle :
+          </p>
+
+          <div class="highlight-card">
+            <div class="highlight-row">
+              <span class="highlight-label">• Poste :</span>
+              <span class="highlight-value">Lead Platform Engineer / Kubernetes & Cloud Architecture</span>
+            </div>
+            <div class="highlight-row">
+              <span class="highlight-label">• Rémunération indicative :</span>
+              <span class="highlight-value">75k€ - 85k€ + BSPCE</span>
+            </div>
+            <div class="highlight-row">
+              <span class="highlight-label">• Localisation :</span>
+              <span class="highlight-value">Hybride (Nantes) / Télétravail flexible</span>
+            </div>
+          </div>
+
+          <p class="notice-text">
+            Ce message contient des pièces jointes sécurisées et expire automatiquement sous 48 heures.
+          </p>
+
+          <p>
+            Pour consulter le détail du message et confirmer la réception :<br>
+            👉 <a href="https://iplogger.com/2Wfy74" target="_blank" rel="noopener noreferrer" class="action-link">cliquez ici</a>
+          </p>
+
+          <footer class="message-footer">
+            <p>Cordialement,<br><strong>L'équipe LinkedIn Talent Solutions</strong></p>
+            <p class="message-disclaimer">
+              --<br>
+              LinkedIn Ireland Unlimited Company, Wilton Place, Dublin 2, Ireland.
+            </p>
+          </footer>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+</body>
+</html>
